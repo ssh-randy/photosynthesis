@@ -67,7 +67,7 @@ createdAt: DATETIME
 export async function parsePhotoBody(req, res) {
 
   return {
-    photoId: req.body.photo_id,
+    photoId: req.body.photoId,
     productId: req.body.productId,
     variantId: req.body.variantId,
     name: req.body.producnametId,
@@ -80,11 +80,11 @@ export async function parsePhotoBody(req, res) {
 */
 export async function formatPhotoResponse(req, res, rawCodeData) {
   const ids = [];
-  console.log('rawCodeData: ' + rawCodeData.productId)
+  console.log('rawCodeData: ' + rawCodeData.product_id)
   /* Get every product, variant and discountID that was queried from the database */
-  rawCodeData.forEach(({ productId,  }) => {
-    ids.push(productId);
-    ids.push(variantId);
+  rawCodeData.forEach(({ product_id, variant_id }) => {
+    ids.push(product_id);
+    ids.push(variant_id);
   });
 
   /* Instantiate a new GraphQL client to query the Shopify GraphQL Admin API */

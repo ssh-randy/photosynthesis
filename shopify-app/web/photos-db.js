@@ -104,8 +104,8 @@ export const PhotosDB = {
 
     const hasPhotosTable = await this.__hasTable(this.photosTableName);
 
-    const hasPhotosGeneratedTable = await this.__hasPhotosTable(this.photosGeneratedTableName);
-
+    const hasPhotosGeneratedTable = await this.__hasTable(this.photosGeneratedTableName);
+    console.log('hasPhotosTable: ' + hasPhotosTable)
     if (hasPhotosTable) {
       this.ready = Promise.resolve();
 
