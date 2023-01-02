@@ -11,80 +11,34 @@ const DEFAULT_PURCHASE_QUANTITY = 1;
 
 export const PhotosDB = {
   photosTableName: "photos",
+  photosGeneratedTableName: "photos_generated",
   db: null,
   ready: null,
 
   create: async function ({
+    photoId,
     shopDomain,
-    title,
-    productId,
-    variantId,
-    handle,
-    destination,
+    name,
+    url,
   }) {
     await this.ready;
 
-    console.log('shopDomain: ' + shopDomain + "\n title: "+ title + "\n productId: " + productId + "\n varientId: " + variantId + "\n handle: " + handle + "\n destination: " + destination)
-
     const query = `
       INSERT INTO ${this.photosTableName}
-      (shopDomain, title, productId, variantId, handle, destination, scans)
-      VALUES (?, ?, ?, ?, ?, ?, 0)
+      (photo_id, product_id, variant_id, shopDomain, name, url)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
       RETURNING id;
     `;
 
     const rawResults = await this.__query(query, [
+      photoId,
       shopDomain,
-      title,
-      productId,
-      variantId,
-      handle,
-      destination,
+      name,
+      url,
     ]);
 
     console.log('results: ' + rawResults)
     return rawResults[0].id;
-  },
-
-  update: async function (
-    id,
-    {
-      title,
-      productId,
-      variantId,
-      handle,
-      discountId,
-      discountCode,
-      destination,
-    }
-  ) {
-    await this.ready;
-
-    const query = `
-      UPDATE ${this.photosTableName}
-      SET
-        title = ?,
-        productId = ?,
-        variantId = ?,
-        handle = ?,
-        discountId = ?,
-        discountCode = ?,
-        destination = ?
-      WHERE
-        id = ?;
-    `;
-
-    await this.__query(query, [
-      title,
-      productId,
-      variantId,
-      handle,
-      discountId,
-      discountCode,
-      destination,
-      id,
-    ]);
-    return true;
   },
 
   list: async function (shopDomain) {
@@ -106,7 +60,7 @@ export const PhotosDB = {
     await this.ready;
     const query = `
       SELECT * FROM ${this.photosTableName}
-      WHERE id = ?;
+      WHERE photo_id = ?;
     `;
     const rows = await this.__query(query, [id]);
     if (!Array.isArray(rows) || rows?.length !== 1) return undefined;
@@ -131,14 +85,14 @@ export const PhotosDB = {
     Also used to make sure the database and table are set up before the server starts.
   */
 
-  __hasPhotosTable: async function () {
+  __hasTable: async function (tableName) {
     const query = `
       SELECT name FROM sqlite_schema
       WHERE
         type = 'table' AND
         name = ?;
     `;
-    const rows = await this.__query(query, [this.photosTableName]);
+    const rows = await this.__query(query, [tableName]);
     return rows.length === 1;
   },
 
@@ -148,24 +102,44 @@ export const PhotosDB = {
     /* Initializes the connection to the database */
     this.db = this.db ?? new sqlite3.Database(DEFAULT_DB_FILE);
 
-    const hasPhotosTable = await this.__hasPhotosTable();
+    const hasPhotosTable = await this.__hasTable(this.photosTableName);
+
+    const hasPhotosGeneratedTable = await this.__hasPhotosTable(this.photosGeneratedTableName);
 
     if (hasPhotosTable) {
       this.ready = Promise.resolve();
 
-      /* Create the QR code table if it hasn't been created */
+      /* Create the base photo table if it hasn't been created */
     } else {
       const query = `
         CREATE TABLE ${this.photosTableName} (
-          id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          photo_id UUID PRIMARY KEY,
+          product_id VARCHAR(255) NOT NULL,
+          variant_id VARCHAR(255) NOT NULL,
           shopDomain VARCHAR(511) NOT NULL,
-          title VARCHAR(511) NOT NULL,
-          productId VARCHAR(255) NOT NULL,
-          variantId VARCHAR(255) NOT NULL,
-          handle VARCHAR(255) NOT NULL,
-          destination VARCHAR(255) NOT NULL,
-          scans INTEGER,
+          name VARCHAR(511) NOT NULL,
+          url VARCHAT(255) NOT NULL,
           createdAt DATETIME NOT NULL DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime'))
+        )
+      `;
+
+      /* Tell the various CRUD methods that they can execute */
+      this.ready = this.__query(query);
+    }
+
+    if (hasPhotosGeneratedTable) {
+      this.ready = Promise.resolve();
+
+      /* Create the generated photo table if it hasn't been created */
+    } else {
+      const query = `
+        CREATE TABLE ${this.photosGeneratedTableName} (
+          photo_id UUID NOT NULL,
+          generated_id INTEGER,
+          prompt TEXT,
+          url VARCHAR(255),
+          createdAt DATETIME NOT NULL DEFAULT (datetime(CURRENT_TIMESTAMP, 'localtime')),
+          PRIMARY KEY(photo_id, generated_id)
         )
       `;
 
@@ -186,15 +160,6 @@ export const PhotosDB = {
         resolve(result);
       });
     });
-  },
-
-  __increaseScanCount: async function (photo) {
-    const query = `
-      UPDATE ${this.photosTableName}
-      SET scans = scans + 1
-      WHERE id = ?
-    `;
-    await this.__query(query, [photo.id]);
   },
 
 };

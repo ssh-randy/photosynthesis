@@ -57,22 +57,21 @@ export async function getShopUrlFromSession(req, res) {
 
 /*
 Expect body to contain
-title: string
-productId: string
-variantId: string
-handle: string
-discountId: string
-discountCode: string
-destination: string
+photo_id: UUID
+product_id: string
+variant_id: string
+name: string
+url: string
+createdAt: DATETIME
 */
 export async function parsePhotoBody(req, res) {
 
   return {
-    title: req.body.title,
+    photoId: req.body.photo_id,
     productId: req.body.productId,
     variantId: req.body.variantId,
-    handle: req.body.handle,
-    destination: req.body.destination,
+    name: req.body.producnametId,
+    url: req.body.url,
   };
 }
 
@@ -83,10 +82,9 @@ export async function formatPhotoResponse(req, res, rawCodeData) {
   const ids = [];
   console.log('rawCodeData: ' + rawCodeData.productId)
   /* Get every product, variant and discountID that was queried from the database */
-  rawCodeData.forEach(({ productId, variantId }) => {
+  rawCodeData.forEach(({ productId,  }) => {
     ids.push(productId);
     ids.push(variantId);
-
   });
 
   /* Instantiate a new GraphQL client to query the Shopify GraphQL Admin API */
@@ -113,10 +111,6 @@ export async function formatPhotoResponse(req, res, rawCodeData) {
     ) || {
       title: "Deleted product",
     };
-
-    const discountDeleted =
-    photo.discountId &&
-      !adminData.body.data.nodes.find((node) => photo.discountId === node?.id);
 
     /*
       Merge the data from the app's database with the data queried from the Shopify GraphQL Admin API
